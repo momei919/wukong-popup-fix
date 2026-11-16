@@ -1,0 +1,6 @@
+# Build outputs
+*.exe
+*.pdb
+
+# Runtime config (per-machine)
+settings.json
