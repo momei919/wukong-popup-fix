@@ -33,6 +33,7 @@ namespace WukongPopupFix
     internal sealed class HelpTip : Control
     {
         private readonly ToolTip _tip;
+        private bool _hot;
 
         public HelpTip(string text)
         {
@@ -48,18 +49,25 @@ namespace WukongPopupFix
             _tip.AutoPopDelay = 60000;
             _tip.ShowAlways = true;
 
-            MouseEnter += delegate { _tip.Show(text, this, Width + 4, -4, 60000); };
-            MouseLeave += delegate { _tip.Hide(this); };
+            MouseEnter += delegate { _hot = true; Invalidate(); _tip.Show(text, this, Width + 4, -4, 60000); };
+            MouseLeave += delegate { _hot = false; Invalidate(); _tip.Hide(this); };
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using (Pen pen = new Pen(Color.FromArgb(130, 130, 130)))
+            if (_hot)
+            {
+                using (SolidBrush fill = new SolidBrush(Color.FromArgb(226, 241, 252)))
+                    e.Graphics.FillEllipse(fill, 0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
+            }
+            Color ring = _hot ? Color.FromArgb(52, 152, 219) : Color.FromArgb(130, 130, 130);
+            float penWidth = _hot ? 1.6f : 1f;
+            using (Pen pen = new Pen(ring, penWidth))
             {
                 e.Graphics.DrawEllipse(pen, 0.5f, 0.5f, Width - 2f, Height - 2f);
             }
-            using (SolidBrush brush = new SolidBrush(Color.FromArgb(90, 90, 90)))
+            using (SolidBrush brush = new SolidBrush(_hot ? Color.FromArgb(23, 96, 150) : Color.FromArgb(90, 90, 90)))
             using (Font font = new Font("Segoe UI", Height * 0.62f, FontStyle.Bold, GraphicsUnit.Pixel))
             using (StringFormat sf = new StringFormat())
             {
@@ -123,7 +131,7 @@ namespace WukongPopupFix
             Color top, bottom;
             if (!Enabled) { top = Color.FromArgb(245, 245, 245); bottom = Color.FromArgb(232, 232, 232); }
             else if (_pressed) { top = Color.FromArgb(216, 232, 245); bottom = Color.FromArgb(237, 246, 253); }
-            else if (_hover) { top = Color.FromArgb(255, 255, 255); bottom = Color.FromArgb(230, 242, 252); }
+            else if (_hover) { top = Color.FromArgb(240, 249, 255); bottom = Color.FromArgb(198, 226, 246); }
             else { top = Color.FromArgb(255, 255, 255); bottom = Color.FromArgb(228, 241, 251); }
 
             Rectangle inner = Rectangle.Inflate(body, -1, -1);
@@ -145,7 +153,8 @@ namespace WukongPopupFix
                     g.DrawLine(hl, inner.X + 1, inner.Y + 2, inner.Right - 2, inner.Y + 2);
             }
 
-            Color fore = Enabled ? Color.FromArgb(36, 44, 53) : Color.FromArgb(150, 150, 150);
+            Color fore = !Enabled ? Color.FromArgb(150, 150, 150)
+                : (_hover ? Color.FromArgb(23, 96, 150) : Color.FromArgb(36, 44, 53));
             Rectangle tr = _pressed ? new Rectangle(1, 1, Width - 2, Height - 2) : new Rectangle(0, 0, Width - 2, Height - 2);
             TextRenderer.DrawText(g, Text, Font, tr, fore,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
@@ -318,10 +327,11 @@ namespace WukongPopupFix
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            TextRenderer.DrawText(g, _title, new Font("Microsoft YaHei UI", 9f, FontStyle.Bold),
-                new Rectangle(S(14), 0, Width - S(120), Height),
-                Color.FromArgb(29, 92, 138),
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            using (Font f = new Font("Microsoft YaHei UI", 11f, FontStyle.Bold))
+                TextRenderer.DrawText(g, _title, f,
+                    new Rectangle(S(14), 0, Width - S(120), Height),
+                    Color.FromArgb(29, 92, 138),
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
 
             DrawCap(g, MinRect, false, _hot == 0, _down && _hot == 0);
             DrawCap(g, CloseRect, true, _hot == 1, _down && _hot == 1);
@@ -601,6 +611,11 @@ namespace WukongPopupFix
             lblFoot.Font = MakeFont(8.5f, FontStyle.Regular);
             lblFoot.SetBounds(S(16), S(544), S(612), S(60));
             Controls.Add(lblFoot);
+
+            foreach (Control c in Controls)
+            {
+                if (c is CheckBox) c.Cursor = Cursors.Hand;
+            }
         }
 
         private void BrowseDirectory(object sender, EventArgs e)
